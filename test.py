@@ -1,9 +1,14 @@
 import wx
 import win32api
 import sys, os
+import socket
+import chardet
 
 APP_TITLE = u'远程打印机'
 APP_ICON = 'icon/print.ico'
+
+HOST = '127.0.0.1'
+PORT = 9999
 
 
 class MainFrame(wx.Frame):
@@ -26,9 +31,11 @@ class MainFrame(wx.Frame):
         self.SetBackgroundColour(wx.Colour(224, 224, 224))
         self.SetSize((300, 300))
         self.Center()
+        self.files_path = None
 
         if hasattr(sys, "frozen") and getattr(sys, "frozen") == "windows_exe":
-            exe_name = win32api.GetModuleFileName(win32api.GetModuleHandle(None))
+            exe_name = win32api.GetModuleFileName(
+                win32api.GetModuleHandle(None))
             icon = wx.Icon(exe_name, wx.BITMAP_TYPE_ICO)
         else:
             icon = wx.Icon(APP_ICON, wx.BITMAP_TYPE_ICO)
@@ -38,6 +45,14 @@ class MainFrame(wx.Frame):
 
         self._create_menu_bar()  # 菜单栏
         self._create_status_bar()  # 状态栏
+
+        label = wx.StaticText(self, -1, u"当前选择的文件")
+        textBox = wx.TextCtrl(self, -1, style=wx.TE_MULTILINE, size=(600, 400))
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(label, 0, wx.ALL | wx.ALIGN_CENTRE)
+        sizer.Add(textBox, 1, wx.ALL | wx.ALIGN_CENTRE)
+        self.__TextBox = textBox
+        self.SetSizerAndFit(sizer)
 
     def _create_menu_bar(self):
         """
@@ -79,11 +94,25 @@ class MainFrame(wx.Frame):
         self.sb.SetStatusText(u'', 1)
         self.sb.SetStatusText(u'状态信息2', 2)
 
-    def _exc_print(self):
+    def _exc_print(self, event):
         """
         执行打印
         :return:
         """
+        # 建立连接
+        try:
+            sk = socket.socket()
+            sk.connect((HOST, PORT))
+        except Exception as e:
+            wx.MessageBox("打印机连接失败", "错误", wx.OK | wx.ICON_INFORMATION)
+
+        if self.files_path == None:
+            wx.MessageBox("未选取打印文件", "错误", wx.OK | wx.ICON_INFORMATION)
+            return
+        elif type(self.files_path) == str:
+            self._socket_upload_file(sk, self.files_path)
+        else:
+            print("打印多个文件")
         self.sb.SetStatusText(u'打印', 1)
 
     def _on_quit(self, evt):
@@ -103,13 +132,14 @@ class MainFrame(wx.Frame):
         :return:
         """
         files_filter = "All files (*.*)|*.*"
-        file_dialog = wx.FileDialog(self, message="选择单个文件", wildcard=files_filter,
-                                   style=wx.FD_OPEN)
+        file_dialog = wx.FileDialog(self, message="选择单个文件",
+                                    wildcard=files_filter,
+                                    style=wx.FD_OPEN)
         dialog_result = file_dialog.ShowModal()
         if dialog_result != wx.ID_OK:
             return
         path = file_dialog.GetPath()
-        print(path)
+        self.files_path = path
         self.sb.SetStatusText(u'选择单个文件', 1)
         self.__TextBox.SetLabel(path)
 
@@ -119,17 +149,54 @@ class MainFrame(wx.Frame):
         :return:
         """
         files_filter = "All files (*.*)|*.*"
-        file_dialog = wx.FileDialog(self, message="多文件选择", wildcard=files_filter,
-                                   style=wx.FD_OPEN | wx.FD_MULTIPLE)
+        file_dialog = wx.FileDialog(self, message="多文件选择",
+                                    wildcard=files_filter,
+                                    style=wx.FD_OPEN | wx.FD_MULTIPLE)
         dialog_result = file_dialog.ShowModal()
         if dialog_result != wx.ID_OK:
             return
         paths = file_dialog.GetPaths()
-        print(paths)
+        self.files_path = paths
         self.__TextBox.SetLabel('')
         for path in paths:
             self.__TextBox.AppendText(path + '\n')
 
+    def _socket_upload_file(self, sk, filepath):
+        """
+        上传文件
+        :param self:
+        :param sk: socket实例
+        :param filepath: 文件路径
+        :return:
+        """
+
+        while True:
+            file_name = os.path.basename(filepath)
+            file_size = os.stat(filepath).st_size
+            file_info = 'post|%s|%s' % (file_name, file_size)
+            sk.sendall(bytes(file_info, 'utf-8'))
+
+            has_sent = 0
+            with open(filepath, 'rb') as fp:
+                while has_sent != file_size:
+                    data = fp.read(1024)
+                    sk.sendall(data)
+
+                    has_sent += len(data)
+
+                    print('\r' + '[上传进度]：%s%.02f%%' % (
+                        '>' * int((has_sent / file_size) * 50),
+                        float(has_sent / file_size) * 100), end='')
+            print()
+            print("%s上传成功" % file_name)
+
+    def _change_file_unicode_to_utf8(self, file_path):
+        """
+        将文件编码修改未utf8格式
+        :param file_path: 文件路径
+        :return:
+        """
+        file_name = os.path.join(flo)
 
 class MainApp(wx.App):
     def OnInit(self):
@@ -137,6 +204,13 @@ class MainApp(wx.App):
         self.Frame = MainFrame(None)
         self.Frame.Show()
         return True
+
+
+class MyDialog(wx.Dialog):
+    def __init__(self, parent, title):
+        super(MyDialog, self).__init__(parent, title=title, size=(50, 50))
+        panel = wx.Panel(self)
+        self.btn = wx.Button(panel, wx.ID_OK, label='ok', size=(50, 25), pos=(75, 50))
 
 
 if __name__ == "__main__":
