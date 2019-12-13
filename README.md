@@ -10,7 +10,7 @@
 
 树莓派型号为3b
 
-![打印机](img\raspberry.JPG)
+![树莓派](img\raspberry.JPG)
 
 #### 思路
 
