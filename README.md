@@ -4,13 +4,13 @@
 
 实验室搬来一台打印机，因为机型较旧，只能使用usb链接打印，单独拿台式做打印服务成本太高，因此就想做一个远程打印机程序，用python实现。
 
-![打印机](img\print.JPG)
+![打印机](https://github.com/Okery/print_client/blob/master/img/print.JPG)
 
 打印机本机
 
 树莓派型号为3b
 
-![打印机](img\raspberry.JPG)
+![打印机](https://github.com/Okery/print_client/blob/master/img/raspberry.JPG)
 
 #### 思路
 
