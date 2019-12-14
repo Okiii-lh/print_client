@@ -5,6 +5,11 @@ import socket
 import chardet
 import codecs
 
+
+# TODO 多文件打印
+# TODO 实时显示打印机状态
+# TODO 添加打印份数功能
+
 APP_TITLE = u'远程打印机'
 APP_ICON = 'icon/print.ico'
 
