@@ -3,12 +3,14 @@ import win32api
 import sys, os
 import socket
 import chardet
+import codecs
 
 APP_TITLE = u'远程打印机'
 APP_ICON = 'icon/print.ico'
 
 HOST = '127.0.0.1'
 PORT = 9999
+MAX_SIZE = 1024*1024
 
 
 class MainFrame(wx.Frame):
@@ -101,16 +103,21 @@ class MainFrame(wx.Frame):
         """
         # 建立连接
         try:
-            sk = socket.socket()
+            sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sk.connect((HOST, PORT))
         except Exception as e:
             wx.MessageBox("打印机连接失败", "错误", wx.OK | wx.ICON_INFORMATION)
+            return
 
         if self.files_path == None:
             wx.MessageBox("未选取打印文件", "错误", wx.OK | wx.ICON_INFORMATION)
             return
         elif type(self.files_path) == str:
+            self.__TextBox.SetLabel('')
+            self.__TextBox.AppendText("正在打印...")
             self._socket_upload_file(sk, self.files_path)
+            print("上传完成")
+            sk.close()
         else:
             print("打印多个文件")
         self.sb.SetStatusText(u'打印', 1)
@@ -121,7 +128,6 @@ class MainFrame(wx.Frame):
         :param evt:
         :return:
         """
-
         self.sb.SetStatusText(u'退出系统', 1)
         self.Destroy()
 
@@ -169,34 +175,51 @@ class MainFrame(wx.Frame):
         :param filepath: 文件路径
         :return:
         """
+        file_name = os.path.basename(filepath)
+        file_size = os.stat(filepath).st_size
+        file_info = 'post|%s|%s' % (file_name, file_size)
+        sk.sendall(bytes(file_info, 'utf-8'))
 
-        while True:
-            file_name = os.path.basename(filepath)
-            file_size = os.stat(filepath).st_size
-            file_info = 'post|%s|%s' % (file_name, file_size)
-            sk.sendall(bytes(file_info, 'utf-8'))
+        has_sent = 0
+        with open(filepath, 'rb') as fp:
+            while has_sent != file_size:
+                data = fp.read(1024)
+                sk.sendall(data)
 
-            has_sent = 0
-            with open(filepath, 'rb') as fp:
-                while has_sent != file_size:
-                    data = fp.read(1024)
-                    sk.sendall(data)
+                has_sent += len(data)
 
-                    has_sent += len(data)
-
-                    print('\r' + '[上传进度]：%s%.02f%%' % (
+                print('\r' + '[上传进度]：%s%.02f%%' % (
                         '>' * int((has_sent / file_size) * 50),
                         float(has_sent / file_size) * 100), end='')
-            print()
-            print("%s上传成功" % file_name)
+        print()
+        print("%s上传成功" % file_name)
 
-    def _change_file_unicode_to_utf8(self, file_path):
+    def _change_file_unicode_to_utf8(self, file_unicode, file_path):
         """
         将文件编码修改未utf8格式
+        :param file_unicode: 文件原编码格式
         :param file_path: 文件路径
         :return:
         """
-        file_name = os.path.join(flo)
+        in_enc = file_unicode.upper()
+        out_enc = "UTF-8"
+
+        try:
+            f = codecs.open(file_path, 'r', in_enc)
+            new_content = f.read()
+            codecs.open(file_path, 'w', out_enc).write(new_content)
+        except IOError as err:
+            print("文件格式转换错误")
+
+    def _get_encoding(self, file_path):
+        """
+        获取文件原编码格式
+        :param file_path: 文件路径
+        :return:
+        """
+        with open(file_path, 'rb') as f:
+            return chardet.detect(f.read())['encoding']
+
 
 class MainApp(wx.App):
     def OnInit(self):
