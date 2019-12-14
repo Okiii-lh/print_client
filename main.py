@@ -1,3 +1,12 @@
+# coding=utf-8
+"""
+@File    :   main.py
+@Contact :   13132515202@163.com
+
+@Modify Time      @Author    @Version    @Description
+------------      -------    --------    -----------
+2019/12/12 22:39   LiuHe      1.0         远程打印客户端实现
+"""
 import wx
 import win32api
 import sys, os
