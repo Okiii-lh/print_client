@@ -10,10 +10,14 @@
 
 树莓派型号为3b
 
-![打印机](https://github.com/Okery/print_client/blob/master/img/raspberry.JPG)
+![树莓派3B](https://github.com/Okery/print_client/blob/master/img/raspberry.JPG)
 
 #### 思路
 
 想着电脑做一个客户端，树莓派usb链接打印机，树莓派运行服务端
 
 客户端选择文件，上传到服务端，服务端保存文件，并将文件打印，打印完毕后删掉源文件，初步想法是这样，看看能不能实现不用保存文件，直接进行打印
+
+#### 实现
+客户端初步界面如下
+![打印客户端](https://github.com/Okery/print_client/blob/master/img/client.JPG)
